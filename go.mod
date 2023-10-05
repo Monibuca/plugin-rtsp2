@@ -1,6 +1,6 @@
 module m7s.live/plugin/rtsp2/v4
 
-go 1.21.0
+go 1.20
 
 require (
 	github.com/AlexxIT/go2rtc v1.7.1 // indirect
