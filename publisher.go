@@ -2,6 +2,8 @@ package rtsp2
 
 import (
 	"github.com/AlexxIT/go2rtc/pkg/core"
+	"github.com/AlexxIT/go2rtc/pkg/h264"
+	"github.com/AlexxIT/go2rtc/pkg/h265"
 	"github.com/AlexxIT/go2rtc/pkg/rtsp"
 	"go.uber.org/zap"
 	"m7s.live/engine/v4"
@@ -27,19 +29,38 @@ func (p *RTSPPublisher) setTracks() {
 			var handler core.HandlerFunc
 			switch c.Name {
 			case core.CodecH264:
-				p.VideoTrack = track.NewH264(p.Stream, c.PayloadType)
+				if p.VideoTrack == nil {
+					p.VideoTrack = track.NewH264(p.Stream, c.PayloadType)
+					sps, pps := h264.GetParameterSet(c.FmtpLine)
+					p.VideoTrack.WriteSliceBytes(sps)
+					p.VideoTrack.WriteSliceBytes(pps)
+				}
 				handler = p.VideoTrack.WriteRTPPack
 			case core.CodecH265:
-				p.VideoTrack = track.NewH265(p.Stream, c.PayloadType)
+				if p.VideoTrack == nil {
+					p.VideoTrack = track.NewH265(p.Stream, c.PayloadType)
+					vps, sps, pps := h265.GetParameterSet(c.FmtpLine)
+					if len(vps) > 0 {
+						p.VideoTrack.WriteSliceBytes(vps)
+					}
+					p.VideoTrack.WriteSliceBytes(sps)
+					p.VideoTrack.WriteSliceBytes(pps)
+				}
 				handler = p.VideoTrack.WriteRTPPack
 			case core.CodecAAC:
-				p.AudioTrack = track.NewAAC(p.Stream, c.PayloadType)
+				if p.AudioTrack == nil {
+					p.AudioTrack = track.NewAAC(p.Stream, c.PayloadType)
+				}
 				handler = p.AudioTrack.WriteRTPPack
 			case core.CodecPCMA:
-				p.AudioTrack = track.NewG711(p.Stream, true, c.PayloadType)
+				if p.AudioTrack == nil {
+					p.AudioTrack = track.NewG711(p.Stream, true, c.PayloadType)
+				}
 				handler = p.AudioTrack.WriteRTPPack
 			case core.CodecPCMU:
-				p.AudioTrack = track.NewG711(p.Stream, false, c.PayloadType)
+				if p.AudioTrack == nil {
+					p.AudioTrack = track.NewG711(p.Stream, false, c.PayloadType)
+				}
 				handler = p.AudioTrack.WriteRTPPack
 			}
 			if handler != nil {
