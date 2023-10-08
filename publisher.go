@@ -27,6 +27,9 @@ func (p *RTSPPublisher) OnEvent(event any) {
 
 func (p *RTSPPublisher) setTracks() {
 	for _, m := range p.Conn.Medias {
+		if m.Direction != core.DirectionRecvonly {
+			continue
+		}
 		for _, c := range m.Codecs {
 			var handler core.HandlerFunc
 			switch c.Name {
