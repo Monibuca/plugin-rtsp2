@@ -1,6 +1,8 @@
 package rtsp2
 
 import (
+	"encoding/hex"
+
 	"github.com/AlexxIT/go2rtc/pkg/core"
 	"github.com/AlexxIT/go2rtc/pkg/h264"
 	"github.com/AlexxIT/go2rtc/pkg/h265"
@@ -32,8 +34,12 @@ func (p *RTSPPublisher) setTracks() {
 				if p.VideoTrack == nil {
 					p.VideoTrack = track.NewH264(p.Stream, c.PayloadType)
 					sps, pps := h264.GetParameterSet(c.FmtpLine)
-					p.VideoTrack.WriteSliceBytes(sps)
-					p.VideoTrack.WriteSliceBytes(pps)
+					if len(sps) > 0 {
+						p.VideoTrack.WriteSliceBytes(sps)
+					}
+					if len(pps) > 0 {
+						p.VideoTrack.WriteSliceBytes(pps)
+					}
 				}
 				handler = p.VideoTrack.WriteRTPPack
 			case core.CodecH265:
@@ -43,23 +49,40 @@ func (p *RTSPPublisher) setTracks() {
 					if len(vps) > 0 {
 						p.VideoTrack.WriteSliceBytes(vps)
 					}
-					p.VideoTrack.WriteSliceBytes(sps)
-					p.VideoTrack.WriteSliceBytes(pps)
+					if len(sps) > 0 {
+						p.VideoTrack.WriteSliceBytes(sps)
+					}
+					if len(pps) > 0 {
+						p.VideoTrack.WriteSliceBytes(pps)
+					}
 				}
 				handler = p.VideoTrack.WriteRTPPack
 			case core.CodecAAC:
 				if p.AudioTrack == nil {
-					p.AudioTrack = track.NewAAC(p.Stream, c.PayloadType)
+					s := core.Between(c.FmtpLine, "config=", ";")
+					asc, _ := hex.DecodeString(s)
+					// var aacConfig mpeg4audio.AudioSpecificConfig
+					// aacConfig.ChannelCount = int(c.Channels)
+					// aacConfig.SampleRate = int(c.ClockRate)
+					// aacConfig.Type = mpeg4audio.ObjectTypeAACLC
+					// asc, _ := aacConfig.Marshal()
+					aac := track.NewAAC(p.Stream, c.PayloadType, c.ClockRate)
+					aac.WriteSequenceHead(append([]byte{0xAF, 0x00}, asc...))
+					p.AudioTrack = aac
 				}
 				handler = p.AudioTrack.WriteRTPPack
 			case core.CodecPCMA:
 				if p.AudioTrack == nil {
-					p.AudioTrack = track.NewG711(p.Stream, true, c.PayloadType)
+					g711 := track.NewG711(p.Stream, true, c.PayloadType, c.ClockRate)
+					g711.Channels = byte(c.Channels)
+					p.AudioTrack = g711
 				}
 				handler = p.AudioTrack.WriteRTPPack
 			case core.CodecPCMU:
 				if p.AudioTrack == nil {
-					p.AudioTrack = track.NewG711(p.Stream, false, c.PayloadType)
+					g711 := track.NewG711(p.Stream, false, c.PayloadType, c.ClockRate)
+					g711.Channels = byte(c.Channels)
+					p.AudioTrack = g711
 				}
 				handler = p.AudioTrack.WriteRTPPack
 			}

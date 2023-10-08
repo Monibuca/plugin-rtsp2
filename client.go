@@ -29,6 +29,12 @@ func (p *RTSPPuller) Pull() (err error) {
 		return
 	}
 	p.setTracks()
+	if p.AudioTrack == nil {
+		p.Publisher.Config.PubAudio = false
+	}
+	if p.VideoTrack == nil {
+		p.Publisher.Config.PubVideo = false
+	}
 	return p.Conn.Start()
 }
 
